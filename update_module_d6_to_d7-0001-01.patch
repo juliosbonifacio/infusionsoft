@@ -1,0 +1,478 @@
+diff --git a/includes/helpers.inc b/includes/helpers.inc
+index 8c50649..898c6a7 100644
+--- a/includes/helpers.inc
++++ b/includes/helpers.inc
+@@ -54,7 +54,7 @@ function _infusionsoft_contact_map_select($required_options = array()) {
+       // If there are required options, lets make sure the map has them.
+       if (!empty($required_options)) {
+         // This map has no options, we can skip this map.
+-        if (empty($map['options']) || !is_array($map['options'])){
++        if (empty($map['options']) || !is_array($map['options'])) {
+           continue;
+         }
+ 
+@@ -142,7 +142,7 @@ function _infusionsoft_get_action_set_select() {
+   $query = array('Id' => '%');
+   $return_fields = array('Id', 'TemplateName');
+   $action_sets = infusionsoft_query_all('ActionSequence', $query, $return_fields);
+-  if (!empty($action_sets)){
++  if (!empty($action_sets)) {
+     foreach ($action_sets as $action_set) {
+       $options_array[$action_set['Id']]  = $action_set['Id'] . ': '. $action_set['TemplateName'];
+     }
+diff --git a/includes/infusionsoft.actions.inc b/includes/infusionsoft.actions.inc
+index 5a6d681..c68dc74 100644
+--- a/includes/infusionsoft.actions.inc
++++ b/includes/infusionsoft.actions.inc
+@@ -14,68 +14,52 @@
+ function infusionsoft_action_info() {
+   return array(
+     'infusionsoft_add_tag_to_user_action' => array(
+-      'description' => t('Infusionsoft: Add tag to user'),
++      'label' => t('Infusionsoft: Add tag to user'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => TRUE
+-      ),
++      'triggers' => array('any'),
+     ),
+     'infusionsoft_remove_tag_from_user_action' => array(
+-      'description' => t('Infusionsoft: Remove tag from user'),
++      'label' => t('Infusionsoft: Remove tag from user'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => TRUE
+-      ),
++      'triggers' => array('any'),
+     ),
+     'infusionsoft_add_user_to_database_action' => array(
+-      'description' => t('Infusionsoft: Add/update user to the Infusionsoft database'),
++      'label' => t('Infusionsoft: Add/update user to the Infusionsoft database'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => FALSE
+-      ),
++      'triggers' => array('any'),
+     ),
+     'infusionsoft_add_campaign_to_user_action' => array(
+-      'description' => t('Infusionsoft: Add campaign to user'),
++      'label' => t('Infusionsoft: Add campaign to user'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => FALSE
+-      ),
++      'triggers' => array('any'),
+     ),
+     'infusionsoft_remove_campaign_from_user_action' => array(
+-      'description' => t('Infusionsoft: Remove campaign from user'),
++      'label' => t('Infusionsoft: Remove campaign from user'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => FALSE
+-      ),
++      'triggers' => array('any'),
+     ),
+     'infusionsoft_pause_campaign_for_user_action' => array(
+-      'description' => t('Infusionsoft: Pause campaign for user'),
++      'label' => t('Infusionsoft: Pause campaign for user'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => FALSE
+-      ),
++      'triggers' => array('any'),
+     ),
+     'infusionsoft_resume_campaign_for_user_action' => array(
+-      'description' => t('Infusionsoft: Resume campaign for user'),
++      'label' => t('Infusionsoft: Resume campaign for user'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => FALSE
+-      ),
++      'triggers' => array('any'),
+     ),
+     'infusionsoft_run_action_set_action' => array(
+-      'description' => t('Infusionsoft: Run action set on user'),
++      'label' => t('Infusionsoft: Run action set on user'),
+       'type' => 'user',
+       'configurable' => TRUE,
+-      'hooks' => array(
+-        'any' => FALSE
+-      ),
++      'triggers' => array('any'),
+     ),
+   );
+ }
+@@ -88,10 +72,10 @@ function infusionsoft_action_info() {
+  *
+  * Note: Groups are now called tags in infusionsoft.
+  */
+-function infusionsoft_add_tag_to_user_action(&$object, $context = array()) {
++function infusionsoft_add_tag_to_user_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+@@ -149,10 +133,10 @@ function infusionsoft_add_tag_to_user_action_submit($form, $form_state) {
+  * Removes an infusionsoft contact group from the current user.
+  *
+  */
+-function infusionsoft_remove_tag_from_user_action(&$object, $context = array()) {
++function infusionsoft_remove_tag_from_user_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+@@ -210,10 +194,10 @@ function infusionsoft_remove_tag_from_user_action_submit($form, $form_state) {
+  * Adds the current user to the infusionsoft database.
+  *
+  */
+-function infusionsoft_add_user_to_database_action(&$object, $context = array()) {
++function infusionsoft_add_user_to_database_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+@@ -281,10 +265,10 @@ function infusionsoft_add_user_to_database_action_submit($form, $form_state) {
+  * Adds an infusionsoft contact group to the current user.
+  *
+  */
+-function infusionsoft_add_campaign_to_user_action(&$object, $context = array()) {
++function infusionsoft_add_campaign_to_user_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+@@ -346,10 +330,10 @@ function infusionsoft_add_campaign_to_user_action_submit($form, $form_state) {
+  * Adds an infusionsoft contact group to the current user.
+  *
+  */
+-function infusionsoft_remove_campaign_from_user_action(&$object, $context = array()) {
++function infusionsoft_remove_campaign_from_user_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+@@ -410,10 +394,10 @@ function infusionsoft_remove_campaign_from_user_action_submit($form, $form_state
+  * Adds an infusionsoft contact group to the current user.
+  *
+  */
+-function infusionsoft_pause_campaign_for_user_action(&$object, $context = array()) {
++function infusionsoft_pause_campaign_for_user_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+@@ -474,10 +458,10 @@ function infusionsoft_pause_campaign_for_user_action_submit($form, $form_state)
+  * Adds an infusionsoft contact group to the current user.
+  *
+  */
+-function infusionsoft_resume_campaign_for_user_action(&$object, $context = array()) {
++function infusionsoft_resume_campaign_for_user_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+@@ -538,10 +522,10 @@ function infusionsoft_resume_campaign_for_user_action_submit($form, $form_state)
+  * Adds an infusionsoft contact group to the current user.
+  *
+  */
+-function infusionsoft_run_action_set_action(&$object, $context = array()) {
++function infusionsoft_run_action_set_action(&$entity, $context = array()) {
+   // Get the user object.
+-  if (isset($object->uid)) {
+-    $user = user_load($object->uid);
++  if (isset($entity->uid)) {
++    $user = user_load($entity->uid);
+   }
+   elseif (isset($context['uid'])) {
+     $user = user_load($context['uid']);
+diff --git a/includes/infusionsoft.admin.inc b/includes/infusionsoft.admin.inc
+index 51bcb4d..acb3ef0 100644
+--- a/includes/infusionsoft.admin.inc
++++ b/includes/infusionsoft.admin.inc
+@@ -221,7 +221,7 @@ function infusionsoft_admin_custom_contact_fields() {
+   if ($contact_id) {
+     $custom_results = infusionsoft_send_request('ContactService.load', $contact_id, $custom_fields);
+     $output .= '<h2>' . t('Results for currently logged in user.') . '</h2>';
+-    foreach($custom_results as $field_name => $value) {
++    foreach ($custom_results as $field_name => $value) {
+       $custom_rows[] = array(
+         $field_name,
+         $value,
+diff --git a/infusionsoft.info b/infusionsoft.info
+index 6a29748..76c213b 100644
+--- a/infusionsoft.info
++++ b/infusionsoft.info
+@@ -1,12 +1,11 @@
+ name = Infusionsoft API
+ description = "Infusionsoft API is a helper module for other modules to call hooks that talk to infusionsoft. It also provides drupal actions and rules actions if that module is installed."
+ package = Infusionsoft
+-core = 6.x
++core = 7.x
+ 
+ 
+ ; Information added by drupal.org packaging script on 2013-03-15
+-version = "6.x-1.0-beta5"
+-core = "6.x"
++version = "7.x-1.0-dev"
++core = "7.x"
+ project = "infusionsoft"
+-datestamp = "1363338917"
+-
++datestamp = "1367236800"
+\ No newline at end of file
+diff --git a/infusionsoft.install b/infusionsoft.install
+index d42520f..567c67f 100644
+--- a/infusionsoft.install
++++ b/infusionsoft.install
+@@ -10,15 +10,6 @@
+ function infusionsoft_schema() {
+   // This should always point to our 'current' schema. This makes it relatively easy
+   // to keep a record of schema as we make changes to it.
+-  return infusionsoft_schema_1();
+-}
+-
+-
+-/**
+- * Schema version 1 for Infusionsoft in D6.
+- */
+-function infusionsoft_schema_1() {
+-  $schema = array();
+ 
+   $schema['infusionsoft'] = array(
+     'description' => 'Contains a correllation between drupal uid to infusionsoft uid',
+@@ -41,22 +32,15 @@ function infusionsoft_schema_1() {
+       'infusionsoft_id' => array('infusionsoft_id'),
+     ),
+   );
+-
+   return $schema;
+ }
+ 
+ /**
+- * Implements hook_install().
+- */
+-function infusionsoft_install() {
+-  drupal_install_schema('infusionsoft');
+-}
+-
+-/**
+  * Implements hook_uninstall().
+  */
+ function infusionsoft_uninstall() {
+-  drupal_uninstall_schema('infusionsoft');
++  //drupal_uninstall_schema('infusionsoft');
++  db_drop_table('infusionsoft');
+   variable_del('infusionsoft_apikey');
+   variable_del('infusionsoft_appname');
+   variable_del('infusionsoft_devel');
+diff --git a/infusionsoft.module b/infusionsoft.module
+index 4206da1..9448d54 100644
+--- a/infusionsoft.module
++++ b/infusionsoft.module
+@@ -228,7 +228,8 @@ function infusionsoft_update_contact($contact_data, $contact_id = NULL, $options
+   }
+   // If we do not know the contact id search for it.
+   if (!empty($contact_data['Username'])) { // By username.
+-    $user = user_load(array('name' => $contact_data['Username']));
++    //$user = user_load(array('name' => $contact_data['Username']));
++    $user = user_load_by_name($contact_data['Username']);
+     $contact_id = infusionsoft_contactid_by_user($user);
+     if ($contact_id) {
+       return infusionsoft_send_request('ContactService.update', (int)$contact_id, $contact_data);
+@@ -248,15 +249,15 @@ function infusionsoft_update_contact($contact_data, $contact_id = NULL, $options
+   // is selected, create a new user with the supplied info.
+   if (!empty($contact_data['Email']) || $options['no_email_update'] == TRUE) {
+     // There is no email in infusionsoft, we have a new user!
+-		$contact_id = infusionsoft_send_request('ContactService.addWithDupCheck', $contact_data, $options['dup_check_type']);
+-		// Opt-in to marketing unless we don't want to.
+-		if ($contact_data['Email'] && $options['opt_in'] && !empty($contact_id)) {
+-			infusionsoft_send_request("APIEmailService.optIn", $contact_data['Email'], $options['opt_reason']);
+-		}
+-		return $contact_id;
+-	}
+-
+-  // There was not enough data to create a new user.
++    $contact_id = infusionsoft_send_request('ContactService.addWithDupCheck', $contact_data, $options['dup_check_type']);
++    // Opt-in to marketing unless we don't want to.
++    if ($contact_data['Email'] && $options['opt_in'] && !empty($contact_id)) {
++      infusionsoft_send_request("APIEmailService.optIn", $contact_data['Email'], $options['opt_reason']);
++    }
++    return $contact_id;
++  }
++
++    // There was not enough data to create a new user.
+   return FALSE;
+ }
+ 
+@@ -648,12 +649,17 @@ function infusionsoft_menu() {
+ }
+ 
+ /**
+- * Implements hook_perm().
++ * Implements hook_permission().
+  *
+  *  Providing permissions for infusionsoft module
+  */
+-function infusionsoft_perm() {
+-  return array('administer infusionsoft', 'view infusionsoft custom contact fields');
++function infusionsoft_permission() {
++  return array(
++    'administer infusionsoft' => array(
++      'title' => t('view infusionsoft custom contact fields'),
++      'description' => t('view infusionsoft custom contact fields.'),
++    ),
++  );
+ }
+ 
+ /**
+diff --git a/infusionsoft_log_email/infusionsoft_log_email.info b/infusionsoft_log_email/infusionsoft_log_email.info
+index 98a6d62..1779149 100644
+--- a/infusionsoft_log_email/infusionsoft_log_email.info
++++ b/infusionsoft_log_email/infusionsoft_log_email.info
+@@ -1,12 +1,12 @@
+ name = Infusionsoft Log Email
+ description = "Logs outbound drupal emails into infusionsoft"
+ package = Infusionsoft
+-core = 6.x
++core = 7.x
+ 
+ dependencies[] = infusionsoft
+ ; Information added by drupal.org packaging script on 2013-03-15
+-version = "6.x-1.0-beta5"
+-core = "6.x"
++version = "7.x-1.0-dev"
++core = "7.x"
+ project = "infusionsoft"
+-datestamp = "1363338917"
++datestamp = "1367236800"
+ 
+diff --git a/infusionsoft_oneway_sync/infusionsoft_oneway_sync.info b/infusionsoft_oneway_sync/infusionsoft_oneway_sync.info
+index 7e7bcda..a7d2c5a 100644
+--- a/infusionsoft_oneway_sync/infusionsoft_oneway_sync.info
++++ b/infusionsoft_oneway_sync/infusionsoft_oneway_sync.info
+@@ -1,12 +1,11 @@
+ name = Infusionsoft Oneway sync
+ description = "Sync basic contact info from drupal to infusionsoft"
+ package = Infusionsoft
+-core = 6.x
++core = 7.x
+ dependencies[] = infusionsoft
+ 
+ ; Information added by drupal.org packaging script on 2013-03-15
+-version = "6.x-1.0-beta5"
+-core = "6.x"
++version = "7.x-1.0-dev"
++core = "7.x"
+ project = "infusionsoft"
+-datestamp = "1363338917"
+-
++datestamp = "1367236800"
+\ No newline at end of file
+diff --git a/infusionsoft_oneway_sync/infusionsoft_oneway_sync.module b/infusionsoft_oneway_sync/infusionsoft_oneway_sync.module
+index bb442bf..4c39780 100644
+--- a/infusionsoft_oneway_sync/infusionsoft_oneway_sync.module
++++ b/infusionsoft_oneway_sync/infusionsoft_oneway_sync.module
+@@ -7,10 +7,30 @@
+ /**
+  * Implementation of hook_user().
+  */
+-function infusionsoft_oneway_sync_user($op, &$edit, &$account, $category = NULL) {
+-  switch ($op) {
+-    case 'after_update':
+-      if (variable_get('infusionsoft_oneway_sync_mail', 1)) {
++//function infusionsoft_oneway_sync_user($op, &$edit, &$account, $category = NULL) {
++//  switch ($op) {
++//    case 'after_update':
++//      if (variable_get('infusionsoft_oneway_sync_mail', 1)) {
++//        if ($edit['mail'] != $account->mail) {
++//          $options = array(
++//            'email_override' => $edit['mail'],
++//          );
++//        }
++//        $contact_data = infusionsoft_contact_get_map($account, variable_get('infusionsoft_oneway_sync_map', 'email'), $options);
++//        $return = infusionsoft_update_contact($contact_data);
++//        _infusionsoft_devel('infusionsoft_oneway', 'Synced mail for %user recieved data: %return <br/><pre>%map</pre>', array('%user' => $account->name, '%map' => print_r($contact_data, TRUE), '%return' => $return));
++//      }
++//      break;
++//  }
++//}
++
++/**
++ * 
++ * Implementation of hook_user_update()
++ */
++function infusionsoft_user_update(&$edit, $account, $category) {
++    if (variable_get('infusionsoft_oneway_sync_mail', 1)) {
++        $options = array();
+         if ($edit['mail'] != $account->mail) {
+           $options = array(
+             'email_override' => $edit['mail'],
+@@ -20,8 +40,6 @@ function infusionsoft_oneway_sync_user($op, &$edit, &$account, $category = NULL)
+         $return = infusionsoft_update_contact($contact_data);
+         _infusionsoft_devel('infusionsoft_oneway', 'Synced mail for %user recieved data: %return <br/><pre>%map</pre>', array('%user' => $account->name, '%map' => print_r($contact_data, TRUE), '%return' => $return));
+       }
+-      break;
+-  }
+ }
+ 
+ function infusionsoft_oneway_sync_infusionsoft_contact_map_info() {
+diff --git a/infusionsoft_uc_addresses/infusionsoft_uc_addresses.info b/infusionsoft_uc_addresses/infusionsoft_uc_addresses.info
+index 23e66f3..2f86992 100644
+--- a/infusionsoft_uc_addresses/infusionsoft_uc_addresses.info
++++ b/infusionsoft_uc_addresses/infusionsoft_uc_addresses.info
+@@ -1,15 +1,15 @@
+ name = Infusionsoft UC Addresses
+ description = "Adds conditional actions to send uc_address information to infusionsoft"
+ package = Infusionsoft
+-core = 6.x
++core = 7.x
+ 
+ dependencies[] = infusionsoft
+ dependencies[] = uc_addresses
+ 
+ 
+ ; Information added by drupal.org packaging script on 2013-03-15
+-version = "6.x-1.0-beta5"
+-core = "6.x"
++version = "7.x-1.0-dev"
++core = "7.x"
+ project = "infusionsoft"
+-datestamp = "1363338917"
++datestamp = "1367236800"
+ 

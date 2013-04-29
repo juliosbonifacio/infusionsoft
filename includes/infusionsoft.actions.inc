@@ -14,68 +14,52 @@
 function infusionsoft_action_info() {
   return array(
     'infusionsoft_add_tag_to_user_action' => array(
-      'description' => t('Infusionsoft: Add tag to user'),
+      'label' => t('Infusionsoft: Add tag to user'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => TRUE
-      ),
+      'triggers' => array('any'),
     ),
     'infusionsoft_remove_tag_from_user_action' => array(
-      'description' => t('Infusionsoft: Remove tag from user'),
+      'label' => t('Infusionsoft: Remove tag from user'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => TRUE
-      ),
+      'triggers' => array('any'),
     ),
     'infusionsoft_add_user_to_database_action' => array(
-      'description' => t('Infusionsoft: Add/update user to the Infusionsoft database'),
+      'label' => t('Infusionsoft: Add/update user to the Infusionsoft database'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => FALSE
-      ),
+      'triggers' => array('any'),
     ),
     'infusionsoft_add_campaign_to_user_action' => array(
-      'description' => t('Infusionsoft: Add campaign to user'),
+      'label' => t('Infusionsoft: Add campaign to user'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => FALSE
-      ),
+      'triggers' => array('any'),
     ),
     'infusionsoft_remove_campaign_from_user_action' => array(
-      'description' => t('Infusionsoft: Remove campaign from user'),
+      'label' => t('Infusionsoft: Remove campaign from user'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => FALSE
-      ),
+      'triggers' => array('any'),
     ),
     'infusionsoft_pause_campaign_for_user_action' => array(
-      'description' => t('Infusionsoft: Pause campaign for user'),
+      'label' => t('Infusionsoft: Pause campaign for user'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => FALSE
-      ),
+      'triggers' => array('any'),
     ),
     'infusionsoft_resume_campaign_for_user_action' => array(
-      'description' => t('Infusionsoft: Resume campaign for user'),
+      'label' => t('Infusionsoft: Resume campaign for user'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => FALSE
-      ),
+      'triggers' => array('any'),
     ),
     'infusionsoft_run_action_set_action' => array(
-      'description' => t('Infusionsoft: Run action set on user'),
+      'label' => t('Infusionsoft: Run action set on user'),
       'type' => 'user',
       'configurable' => TRUE,
-      'hooks' => array(
-        'any' => FALSE
-      ),
+      'triggers' => array('any'),
     ),
   );
 }
@@ -88,10 +72,10 @@ function infusionsoft_action_info() {
  *
  * Note: Groups are now called tags in infusionsoft.
  */
-function infusionsoft_add_tag_to_user_action(&$object, $context = array()) {
+function infusionsoft_add_tag_to_user_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);
@@ -149,10 +133,10 @@ function infusionsoft_add_tag_to_user_action_submit($form, $form_state) {
  * Removes an infusionsoft contact group from the current user.
  *
  */
-function infusionsoft_remove_tag_from_user_action(&$object, $context = array()) {
+function infusionsoft_remove_tag_from_user_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);
@@ -210,10 +194,10 @@ function infusionsoft_remove_tag_from_user_action_submit($form, $form_state) {
  * Adds the current user to the infusionsoft database.
  *
  */
-function infusionsoft_add_user_to_database_action(&$object, $context = array()) {
+function infusionsoft_add_user_to_database_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);
@@ -281,10 +265,10 @@ function infusionsoft_add_user_to_database_action_submit($form, $form_state) {
  * Adds an infusionsoft contact group to the current user.
  *
  */
-function infusionsoft_add_campaign_to_user_action(&$object, $context = array()) {
+function infusionsoft_add_campaign_to_user_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);
@@ -346,10 +330,10 @@ function infusionsoft_add_campaign_to_user_action_submit($form, $form_state) {
  * Adds an infusionsoft contact group to the current user.
  *
  */
-function infusionsoft_remove_campaign_from_user_action(&$object, $context = array()) {
+function infusionsoft_remove_campaign_from_user_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);
@@ -410,10 +394,10 @@ function infusionsoft_remove_campaign_from_user_action_submit($form, $form_state
  * Adds an infusionsoft contact group to the current user.
  *
  */
-function infusionsoft_pause_campaign_for_user_action(&$object, $context = array()) {
+function infusionsoft_pause_campaign_for_user_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);
@@ -474,10 +458,10 @@ function infusionsoft_pause_campaign_for_user_action_submit($form, $form_state) 
  * Adds an infusionsoft contact group to the current user.
  *
  */
-function infusionsoft_resume_campaign_for_user_action(&$object, $context = array()) {
+function infusionsoft_resume_campaign_for_user_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);
@@ -538,10 +522,10 @@ function infusionsoft_resume_campaign_for_user_action_submit($form, $form_state)
  * Adds an infusionsoft contact group to the current user.
  *
  */
-function infusionsoft_run_action_set_action(&$object, $context = array()) {
+function infusionsoft_run_action_set_action(&$entity, $context = array()) {
   // Get the user object.
-  if (isset($object->uid)) {
-    $user = user_load($object->uid);
+  if (isset($entity->uid)) {
+    $user = user_load($entity->uid);
   }
   elseif (isset($context['uid'])) {
     $user = user_load($context['uid']);

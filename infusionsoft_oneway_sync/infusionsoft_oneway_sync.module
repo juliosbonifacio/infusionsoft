@@ -7,10 +7,30 @@
 /**
  * Implementation of hook_user().
  */
-function infusionsoft_oneway_sync_user($op, &$edit, &$account, $category = NULL) {
-  switch ($op) {
-    case 'after_update':
-      if (variable_get('infusionsoft_oneway_sync_mail', 1)) {
+//function infusionsoft_oneway_sync_user($op, &$edit, &$account, $category = NULL) {
+//  switch ($op) {
+//    case 'after_update':
+//      if (variable_get('infusionsoft_oneway_sync_mail', 1)) {
+//        if ($edit['mail'] != $account->mail) {
+//          $options = array(
+//            'email_override' => $edit['mail'],
+//          );
+//        }
+//        $contact_data = infusionsoft_contact_get_map($account, variable_get('infusionsoft_oneway_sync_map', 'email'), $options);
+//        $return = infusionsoft_update_contact($contact_data);
+//        _infusionsoft_devel('infusionsoft_oneway', 'Synced mail for %user recieved data: %return <br/><pre>%map</pre>', array('%user' => $account->name, '%map' => print_r($contact_data, TRUE), '%return' => $return));
+//      }
+//      break;
+//  }
+//}
+
+/**
+ * 
+ * Implementation of hook_user_update()
+ */
+function infusionsoft_user_update(&$edit, $account, $category) {
+    if (variable_get('infusionsoft_oneway_sync_mail', 1)) {
+        $options = array();
         if ($edit['mail'] != $account->mail) {
           $options = array(
             'email_override' => $edit['mail'],
@@ -20,8 +40,6 @@ function infusionsoft_oneway_sync_user($op, &$edit, &$account, $category = NULL)
         $return = infusionsoft_update_contact($contact_data);
         _infusionsoft_devel('infusionsoft_oneway', 'Synced mail for %user recieved data: %return <br/><pre>%map</pre>', array('%user' => $account->name, '%map' => print_r($contact_data, TRUE), '%return' => $return));
       }
-      break;
-  }
 }
 
 function infusionsoft_oneway_sync_infusionsoft_contact_map_info() {

@@ -1,12 +1,11 @@
 name = Infusionsoft Oneway sync
 description = "Sync basic contact info from drupal to infusionsoft"
 package = Infusionsoft
-core = 6.x
+core = 7.x
 dependencies[] = infusionsoft
 
 ; Information added by drupal.org packaging script on 2013-03-15
-version = "6.x-1.0-beta5"
-core = "6.x"
+version = "7.x-1.0-dev"
+core = "7.x"
 project = "infusionsoft"
-datestamp = "1363338917"
-
+datestamp = "1367236800"

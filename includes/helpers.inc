@@ -54,7 +54,7 @@ function _infusionsoft_contact_map_select($required_options = array()) {
       // If there are required options, lets make sure the map has them.
       if (!empty($required_options)) {
         // This map has no options, we can skip this map.
-        if (empty($map['options']) || !is_array($map['options'])){
+        if (empty($map['options']) || !is_array($map['options'])) {
           continue;
         }
 
@@ -142,7 +142,7 @@ function _infusionsoft_get_action_set_select() {
   $query = array('Id' => '%');
   $return_fields = array('Id', 'TemplateName');
   $action_sets = infusionsoft_query_all('ActionSequence', $query, $return_fields);
-  if (!empty($action_sets)){
+  if (!empty($action_sets)) {
     foreach ($action_sets as $action_set) {
       $options_array[$action_set['Id']]  = $action_set['Id'] . ': '. $action_set['TemplateName'];
     }

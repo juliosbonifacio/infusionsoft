@@ -228,7 +228,8 @@ function infusionsoft_update_contact($contact_data, $contact_id = NULL, $options
   }
   // If we do not know the contact id search for it.
   if (!empty($contact_data['Username'])) { // By username.
-    $user = user_load(array('name' => $contact_data['Username']));
+    //$user = user_load(array('name' => $contact_data['Username']));
+    $user = user_load_by_name($contact_data['Username']);
     $contact_id = infusionsoft_contactid_by_user($user);
     if ($contact_id) {
       return infusionsoft_send_request('ContactService.update', (int)$contact_id, $contact_data);
@@ -248,15 +249,15 @@ function infusionsoft_update_contact($contact_data, $contact_id = NULL, $options
   // is selected, create a new user with the supplied info.
   if (!empty($contact_data['Email']) || $options['no_email_update'] == TRUE) {
     // There is no email in infusionsoft, we have a new user!
-		$contact_id = infusionsoft_send_request('ContactService.addWithDupCheck', $contact_data, $options['dup_check_type']);
-		// Opt-in to marketing unless we don't want to.
-		if ($contact_data['Email'] && $options['opt_in'] && !empty($contact_id)) {
-			infusionsoft_send_request("APIEmailService.optIn", $contact_data['Email'], $options['opt_reason']);
-		}
-		return $contact_id;
-	}
+    $contact_id = infusionsoft_send_request('ContactService.addWithDupCheck', $contact_data, $options['dup_check_type']);
+    // Opt-in to marketing unless we don't want to.
+    if ($contact_data['Email'] && $options['opt_in'] && !empty($contact_id)) {
+      infusionsoft_send_request("APIEmailService.optIn", $contact_data['Email'], $options['opt_reason']);
+    }
+    return $contact_id;
+  }
 
-  // There was not enough data to create a new user.
+    // There was not enough data to create a new user.
   return FALSE;
 }
 
@@ -648,12 +649,17 @@ function infusionsoft_menu() {
 }
 
 /**
- * Implements hook_perm().
+ * Implements hook_permission().
  *
  *  Providing permissions for infusionsoft module
  */
-function infusionsoft_perm() {
-  return array('administer infusionsoft', 'view infusionsoft custom contact fields');
+function infusionsoft_permission() {
+  return array(
+    'administer infusionsoft' => array(
+      'title' => t('view infusionsoft custom contact fields'),
+      'description' => t('view infusionsoft custom contact fields.'),
+    ),
+  );
 }
 
 /**

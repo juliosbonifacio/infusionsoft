@@ -10,15 +10,6 @@
 function infusionsoft_schema() {
   // This should always point to our 'current' schema. This makes it relatively easy
   // to keep a record of schema as we make changes to it.
-  return infusionsoft_schema_1();
-}
-
-
-/**
- * Schema version 1 for Infusionsoft in D6.
- */
-function infusionsoft_schema_1() {
-  $schema = array();
 
   $schema['infusionsoft'] = array(
     'description' => 'Contains a correllation between drupal uid to infusionsoft uid',
@@ -41,22 +32,15 @@ function infusionsoft_schema_1() {
       'infusionsoft_id' => array('infusionsoft_id'),
     ),
   );
-
   return $schema;
-}
-
-/**
- * Implements hook_install().
- */
-function infusionsoft_install() {
-  drupal_install_schema('infusionsoft');
 }
 
 /**
  * Implements hook_uninstall().
  */
 function infusionsoft_uninstall() {
-  drupal_uninstall_schema('infusionsoft');
+  //drupal_uninstall_schema('infusionsoft');
+  db_drop_table('infusionsoft');
   variable_del('infusionsoft_apikey');
   variable_del('infusionsoft_appname');
   variable_del('infusionsoft_devel');

@@ -221,7 +221,7 @@ function infusionsoft_admin_custom_contact_fields() {
   if ($contact_id) {
     $custom_results = infusionsoft_send_request('ContactService.load', $contact_id, $custom_fields);
     $output .= '<h2>' . t('Results for currently logged in user.') . '</h2>';
-    foreach($custom_results as $field_name => $value) {
+    foreach ($custom_results as $field_name => $value) {
       $custom_rows[] = array(
         $field_name,
         $value,
