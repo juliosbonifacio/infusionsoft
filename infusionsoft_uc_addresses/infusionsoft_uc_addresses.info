@@ -1,0 +1,15 @@
+name = Infusionsoft UC Addresses
+description = "Adds conditional actions to send uc_address information to infusionsoft"
+package = Infusionsoft
+core = 6.x
+
+dependencies[] = infusionsoft
+dependencies[] = uc_addresses
+
+
+; Information added by drupal.org packaging script on 2013-03-15
+version = "6.x-1.0-beta5"
+core = "6.x"
+project = "infusionsoft"
+datestamp = "1363338917"
+

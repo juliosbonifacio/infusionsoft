@@ -1,0 +1,12 @@
+<?php
+/**
+ * @file
+ * Install/uninstall for infusionsoft_oneway_sync module
+ */
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function infusionsoft_oneway_sync_uninstall() {
+  variable_del('infusionsoft_oneway_sync_mail');
+}

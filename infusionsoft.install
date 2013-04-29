@@ -1,0 +1,66 @@
+<?php
+/**
+ * @file
+ * Install for infusionsoft module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function infusionsoft_schema() {
+  // This should always point to our 'current' schema. This makes it relatively easy
+  // to keep a record of schema as we make changes to it.
+  return infusionsoft_schema_1();
+}
+
+
+/**
+ * Schema version 1 for Infusionsoft in D6.
+ */
+function infusionsoft_schema_1() {
+  $schema = array();
+
+  $schema['infusionsoft'] = array(
+    'description' => 'Contains a correllation between drupal uid to infusionsoft uid',
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'infusionsoft_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+    ),
+    'primary key' => array('uid'),
+    'indexes' => array(
+      'infusionsoft_id' => array('infusionsoft_id'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function infusionsoft_install() {
+  drupal_install_schema('infusionsoft');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function infusionsoft_uninstall() {
+  drupal_uninstall_schema('infusionsoft');
+  variable_del('infusionsoft_apikey');
+  variable_del('infusionsoft_appname');
+  variable_del('infusionsoft_devel');
+  variable_del('infusionsoft_watchdog');
+  variable_del('infusionsoft_tracking');
+  variable_del('infusionsoft_tracking_url');
+}

@@ -1,0 +1,93 @@
+<?php
+/**
+ * @file
+ * Log drupal emails to infusionsoft.
+ */
+
+define('INFUSIONSOFT_LOG_EMAIL_SENT', 1);
+define('INFUSIONSOFT_LOG_EMAIL_RECIEVED', 0);
+
+/**
+ * Implements hook_mail_alter().
+ *
+ * Logs all drupal outgoing email into infusionsoft.
+ *
+ * @link http://help.infusionsoft.com/api-docs/emailservice#attachEmail
+ */
+function infusionsoft_log_email_mail_alter(&$message) {
+  // Log outgoing mail to infusionsoft.
+  // 1 is Yes, only log mail if box is checked yes, defaults to yes
+  if (variable_get('infusionsoft_log_outgoing_mail', 1)) {
+    $contact_id = NULL;
+
+    // Do not send empty to messages to infusionsoft.
+    if (empty($message['to'])) {
+      return;
+    }
+
+    $contact_id = infusionsoft_contactid_by_email($message['to']);
+
+    // If there is currently no contact_id, add the email address to the contact list.
+    if (empty($contact_id)) {
+      $contact_id = infusionsoft_update_contact(array('Email' => $message['to']));
+    }
+
+    if (!empty($contact_id)) {
+      $header_string = '';
+      $html_body = $text_body = '';
+      $keys = array_keys($message['headers']);
+
+      // Format headers into a string for infusionsoft.
+      for ($i = 0; $i < count($message['headers']); $i++) {
+        $header_string .= $keys[$i] . ': ' . $message['headers'][$keys[$i]] . "\r\n";
+      }
+
+      // Format content type into something infusionsoft understands.
+      if (strstr($message['headers']['Content-Type'], 'text/plain')) {
+        $content_type = 'Text';
+        $text_body = $message['body'][0];
+      }
+      elseif (strstr($message['headers']['Content-Type'], 'text/html')) {
+        $content_type = 'HTML';
+        $html_body = $message['body'][0];
+      }
+      elseif (strstr($message['headers']['Content-Type'], 'multipart/alternative')) {
+        $content_type = 'Multipart';
+        $html_body = $message['body'][0];
+        $text_body = $message['body'][1];
+      }
+
+      // Send to infusionsoft.
+      $results = infusionsoft_send_request('APIEmailService.attachEmail', (int)$contact_id, $message['from'], $message['from'], $message['to'], '', '', $content_type, $message['subject'], $html_body, $text_body, $header_string, '', date('Ymd\TH:i:s'), INFUSIONSOFT_LOG_EMAIL_RECIEVED);
+      if ($results != 1) {
+        _infusionsoft_devel('infusionsoft', 'log outgoing mail failure: @failure.', array('@failure' => $results), WATCHDOG_ERROR);
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function infusionsoft_log_email_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'infusionsoft_admin_settings_form') {
+    $form['infusionsoft_log_outgoing_mail'] = array(
+      '#type' => 'radios',
+      '#title' => t('Would you like to log all outgoing mail in infusionsoft?'),
+      '#options' => array(t('No'), t('Yes')),
+      '#description' => t('All email from drupal will be logged in infusionsoft'),
+      '#default_value' => variable_get('infusionsoft_log_outgoing_mail', 1),
+    );
+    $form['#submit'][] = 'infusionsoft_log_email_admin_submit';
+  }
+}
+
+function infusionsoft_log_email_admin_submit($form, &$form_state) {
+  $log_mail = $form_state['values']['infusionsoft_log_outgoing_mail'];
+  if ($log_mail == 1) { // 1 is Yes, set variable to 1
+    variable_set('infusionsoft_log_outgoing_mail', 1);
+  }
+  else {
+    variable_set('infusionsoft_log_outgoing_mail', 0);
+  }
+}

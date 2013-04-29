@@ -1,0 +1,86 @@
+<?php
+/**
+ * @file
+ * Infusionsoft oneway sync sub module sends drupal data to infusionsoft when a user updates their email.
+ */
+
+/**
+ * Implementation of hook_user().
+ */
+function infusionsoft_oneway_sync_user($op, &$edit, &$account, $category = NULL) {
+  switch ($op) {
+    case 'after_update':
+      if (variable_get('infusionsoft_oneway_sync_mail', 1)) {
+        if ($edit['mail'] != $account->mail) {
+          $options = array(
+            'email_override' => $edit['mail'],
+          );
+        }
+        $contact_data = infusionsoft_contact_get_map($account, variable_get('infusionsoft_oneway_sync_map', 'email'), $options);
+        $return = infusionsoft_update_contact($contact_data);
+        _infusionsoft_devel('infusionsoft_oneway', 'Synced mail for %user recieved data: %return <br/><pre>%map</pre>', array('%user' => $account->name, '%map' => print_r($contact_data, TRUE), '%return' => $return));
+      }
+      break;
+  }
+}
+
+function infusionsoft_oneway_sync_infusionsoft_contact_map_info() {
+  $map['email'] = array(
+    'title' => t('Email'),
+    'description' => t("Only a user's email address."),
+    'callback' => 'infusionsoft_oneway_sync_email_map',
+    'options' => array('email_override'),
+  );
+
+  return $map;
+}
+
+function infusionsoft_oneway_sync_email_map($user, $options) {
+  if (empty($options['email_override'])) {
+    $email = $user->mail;
+  }
+  else {
+    $email = $options['email_override'];
+  }
+  return array(
+    'Email' => $email,
+  );
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function infusionsoft_oneway_sync_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'infusionsoft_admin_settings_form') {
+    $form['infusionsoft_oneway_sync'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Profile one way syncronization.'),
+    );
+    $form['infusionsoft_oneway_sync']['infusionsoft_oneway_sync_confirm'] = array(
+      '#type' => 'radios',
+      '#title' => t('Would you like to enable oneway profile sync to infusionsoft?'),
+      '#options' => array(t('No'), t('Yes')),
+      '#description' => t('All email address changes from drupal will be logged in infusionsoft'),
+      '#default_value' => variable_get('infusionsoft_oneway_sync_mail', 1),
+    );
+    $form['infusionsoft_oneway_sync']['infusionsoft_oneway_sync_map'] = array(
+      '#type' => 'select',
+      '#title' => t('Which map would like to send to infusionsoft when you sync data?'),
+      '#options' => _infusionsoft_contact_map_select(array('email_override')),
+      '#description' => t('Which map would you like to use to push to infusionsoft when a profile is updated?'),
+      '#default_value' => variable_get('infusionsoft_oneway_sync_map', 'email'),
+    );
+    $form['#submit'][] = 'infusionsoft_oneway_sync_admin_submit';
+  }
+}
+
+function infusionsoft_oneway_sync_admin_submit($form, &$form_state) {
+  $sync = $form_state['values']['infusionsoft_oneway_sync_confirm'];
+  if ($sync == 1) { // 1 is Yes, set variable to 1
+    variable_set('infusionsoft_oneway_sync_mail', 1);
+  }
+  else {
+    variable_set('infusionsoft_oneway_sync_mail', 0);
+  }
+  variable_set('infusionsoft_oneway_sync_map', $form_state['values']['infusionsoft_oneway_sync_map']);
+}

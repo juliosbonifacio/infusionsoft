@@ -1,0 +1,114 @@
+<?php
+/**
+ * @file
+ *  One way syncs uc_address fields to infusionsoft.
+ */
+
+/**
+ * Implements hook_init().
+ */
+function infusionsoft_uc_addresses_init() {
+  // Only load conditional actions if ubercart is installed.
+  if (module_exists('ca')) {
+    module_load_include('inc', 'infusionsoft_uc_addresses', 'infusionsoft_uc_addresses.ca');
+  }
+}
+
+/**
+ * Implements hook_infusionsoft_contact_map_info().
+ */
+function infusionsoft_uc_addresses_init_infusionsoft_contact_map_info() {
+  $map['uc_addresses'] = array(
+    'title' => 'uc_addresses',
+    'description' => 'Maps ubercart user addresses to infusionsoft.',
+    'callback' => 'infusionsoft_uc_addresses_map',
+  );
+
+  return $map;
+}
+
+/**
+ * Infusionsoft map callback.
+ */
+function infusionsoft_uc_addresses_map($user, $options) {
+  // Get a user's default address information.
+  $results = db_fetch_array(db_query("SELECT * FROM {uc_addresses} ua LEFT JOIN {uc_addresses_defaults} uad ON ua.aid = uad.aid WHERE uad.uid = %d", $user->uid));
+
+  // tag_user
+  $contact_data = array(
+    'Username' => $user->name,
+    'FirstName' => $results['first_name'],
+    'LastName' => $results['last_name'],
+    'Phone1' => $results['phone'],
+    'Company' => $results['company'],
+    'StreetAddress1' => $results['street1'],
+    'StreetAddress2' => $results['street2'],
+    'City' => $results['city'],
+    'State' => '',
+    'PostalCode' => $results['postal_code'],
+    'Country' => '',
+    'Address1Type' => $results['address_name'],
+    'Email' => $user->mail,
+  );
+
+  // Find the 'zone'.
+  $zone = db_fetch_array(db_query('SELECT * FROM {uc_zones} WHERE zone_id = %d', $results['zone']));
+  $contact_data['State'] = $zone['zone_name'];
+
+  // Find the 'country'.
+  $country = db_fetch_array(db_query('SELECT * FROM {uc_countries} WHERE country_id = %d', $results['country']));
+  $contact_data['Country'] = $country['country_name'];
+
+  return $contact_data;
+}
+
+/**
+ * Sends uc_address data to Infusionsoft.
+ *
+ * @param object user
+ *   Drupal user object.
+ */
+function infusionsoft_uc_addresses_send($user) {
+  // Make sure we have a user record.
+  if (!empty($user)) {
+    $contact_data = infusionsoft_contact_get_map($user, 'uc_addresses');
+    $contact_id = infusionsoft_update_drupal_user($contact_data, $user);
+
+    $contact_data_devel = infusionsoft_uc_addresses_array_implode(' = ', ', ', $contact_data);
+    // Record a message noting the action taken.
+    _infusionsoft_devel('infusionsoft_uc_address', 'Add %name to infusionsoft database<br />uid = %uid<br /><strong>Contact Id:</strong> %contact_id<br /><strong>Contact Data</strong><br />%contact_array', array('%name' => check_plain($user->name), '%contact_id' => $contact_id, '%uid' => $user->uid, '%email' => $user->mail, '%contact_array' => $contact_data_devel));
+  }
+}
+
+/**
+ * Implode an array with the key and value pair giving
+ * a glue, a separator between pairs and the array
+ * to implode.
+ *
+ * @param string $glue
+ *   The glue between key and value
+ *
+ * @param string $separator
+ *   Separator between pairs
+ *
+ * @param array $array
+ *   The array to implode
+ *
+ * @return string
+ *   The imploded array
+ */
+function infusionsoft_uc_addresses_array_implode( $glue, $separator, $array ) {
+  if (!is_array($array)) {
+    return $array;
+  }
+  $string = array();
+  foreach ( $array as $key => $value ) {
+      if (is_array($value)) {
+        $value = implode(',', $value);
+        $type = ' (' . gettype($value) . ')';
+      }
+      $string[] = "{$key}{$glue}{$value}{$type}";
+
+  }
+  return implode($separator, $string);
+}

@@ -1,0 +1,12 @@
+name = Infusionsoft API
+description = "Infusionsoft API is a helper module for other modules to call hooks that talk to infusionsoft. It also provides drupal actions and rules actions if that module is installed."
+package = Infusionsoft
+core = 6.x
+
+
+; Information added by drupal.org packaging script on 2013-03-15
+version = "6.x-1.0-beta5"
+core = "6.x"
+project = "infusionsoft"
+datestamp = "1363338917"
+

@@ -1,0 +1,688 @@
+<?php
+/**
+ * @file
+ * Infusionsoft module connects drupal to infusionsoft.
+ */
+
+/**
+ * BEGIN API FUNCTIONS
+ *
+ * Additional functions can be found in infusionsoft.api.inc
+ */
+
+/**
+ * Find an infusionsoft contact id by drupal username.
+ *
+ * @param object $user
+ *   drupal user object (optional)
+ *   defaults to logged in user.
+ *
+ * @return int|bool
+ *   Returns the first contact id for the matching the email address provided by
+ *   the username. If there is no username, it returns FALSE. Caches
+ *   infusionsoft ids, for less hits to infusionsoft database.
+ */
+function infusionsoft_contactid_by_user($user = NULL) {
+  // No user default to logged in user.
+  if ($user == NULL) {
+    global $user;
+  }
+
+  return _infusionsoft_user_cache($user);
+}
+
+/**
+ * Find an infusionsoft contact id by email address.
+ *
+ * @param string $user_email
+ *   Email address to look up. (optional)
+ *   Defaults to the logged in user.
+ *
+ * @param bool $return_all
+ *   If TRUE will return all contacts with an email address(optional)
+ *   defaults to FALSE
+ *
+ * @return bool
+ *   If $return_all is TRUE, returns an array of contacts matching the email
+ *   address. If FALSE it will return a integer contact_id
+ *
+ * @link http://help.infusionsoft.com/api-docs/contactservice#findByEmail
+ */
+function infusionsoft_contactid_by_email($user_email = NULL, $return_all = FALSE) {
+  if ($user_email == NULL) {
+    global $user;
+    $user_email = $user->mail;
+  }
+  $return_fields = array('Id');
+
+  $contact_ids = infusionsoft_send_request('ContactService.findByEmail', $user_email, $return_fields);
+
+  if ($return_all == TRUE) {
+    return $contact_ids;
+  }
+  return _infusionsoft_get_first_contact_id($contact_ids);
+}
+
+/**
+ * Push a drupal user update to Infusionsoft
+ *
+ * NOTE: Does not update email addresses, if user is not already stored in the infusionsoft database.
+ * NOTE: You cannot use this function to 'Zero out' data. For instance if you set 'Email' => '' it will not update the data.
+ *
+ * @param array $contact_data
+ *   A keyed array which maps to Infusionsoft data tables.
+ *      Example:
+ *        $contact_data = array(
+ *          'FirstName' => 'John',
+ *          'LastName'  => 'Doe',
+ *          'Email'     => 'JDoe@email.com',
+ *          'Username'	=> 'johndoe'
+ *        );
+ * @param object $user
+ *   a drupal user object.
+ *
+ * @param array $options
+ *   an (optional) array of any of the following options:
+ *     'opt_in' -  TRUE (default)
+ *       Only effects new additions to infusionsoft, will opt user in to
+ *        marketing emails.
+ *     'opt_reason' -  'Drupal Auto Opt In' (default)
+ *        Only effects new additions to infusionsoft when opt in is enabled.
+ *        Will add a custom reason to why an infusionsoft user is opting in.
+ *     'no_email_update' - FALSE (default)
+ *       force a contact to be updated if there is no supplied email address
+ *       or drupal user connection.
+ *
+ * @return int
+ *   returns the id number of the new contact record, or the id number of
+ *   the existing record.
+ */
+function infusionsoft_update_drupal_user($contact_data, $user, $options = array()) {
+    // Add (or update a contact).
+    $contact_id = infusionsoft_update_contact($contact_data, NULL, $options);
+    // Add to the drupal infusionsoft table.
+    $contact_id = _infusionsoft_user_cache($user);
+
+    // Return a contact_id.
+    return $contact_id;
+}
+
+/**
+ * Get a contact mapping.
+ *
+ * Lets modules add their own alternate mappings via
+ * hook_infusionsoft_contact_map_info() where modules can define alternate
+ * mappings.
+ *
+ * Provides a default contact mapping.
+ *
+ * @param object $user
+ *   The user object to act upon.
+ *
+ * @param string $map_name
+ *  The name of the map to send to infusionsoft.
+ *
+ *
+ * @param array  $options
+ *   An optional array of options passed through to each map callback.
+ *
+ * @return array
+ *   Returns an array of mapped data.
+ */
+function infusionsoft_contact_get_map($user, $map_name = 'default', $options = array()) {
+  $map_info = infusionsoft_contact_maps();
+  $map = $map_info[$map_name];
+
+  if (empty($map) || empty($map['callback'])) {
+    return FALSE;
+  }
+
+  return $map['callback']($user, $options);
+}
+
+/**
+ * Return info about all available maps.
+ *
+ * @return array
+ *   An associative array of map info.
+ */
+function infusionsoft_contact_maps() {
+
+  $maps = module_invoke_all('infusionsoft_contact_map_info');
+  drupal_alter('infusionsoft_contact_map_info', $maps);
+
+  return $maps;
+}
+
+/**
+ * Update an infusionsoft contact. Add new contact if none exists.
+ *
+ * NOTE: Does not update email addresses, if user is not already stored in the infusionsoft database.
+ * NOTE: You cannot use this function to 'Zero out' data. For instance if you set 'Email' => '' it will not update the data.
+ *
+ * @param array $contact_data
+ *   A keyed array which maps to Infusionsoft data tables.
+ *   The array key needs to be the field name in which you store the value.
+ *   Example:
+ *     $contact_data = array(
+ *       'FirstName' => 'John',
+ *       'LastName'  => 'Doe',
+ *       'Email'     => 'JDoe@email.com',
+ *       'Username'	=> 'johndoe'
+ *     );
+ *
+ * @param int $contact_id
+ *   (optional) - if set this will update a specific contact id, this is ideal
+ *   because if we don't know an infusionsoft contact id we have to lookup the id.
+ *
+ * @param array $options
+ *   (optional) - an array of any of the following options:
+ *
+ *   'opt_in' -  TRUE (default)
+ *     Only affects new additions to infusionsoft, will opt user in to marketing emails.
+ *
+ *   'opt_reason' -  'Drupal Auto Opt In' (default)
+ *     Only affects new additions to infusionsoft when opt in is enabled.
+ *     Will add a custom reason to why an infusionsoft user is opting in.
+ *
+ *   'no_email_update' - FALSE (default)
+ *     Force a contact to be updated if there is no supplied email address or drupal user connection.
+ *
+ *   'dup_check_type' - 'Email' (default)
+ *     Determines how to consider a duplicate record.
+ *     Options: 'Email','EmailAndName' or 'EmailAndNameAndCompany'.
+ *
+ * @return int|bool
+ *   Returns the id number of the new contact record, or the id number of the
+ *   existing record. Returns FALSE if there is no data.
+ *
+ * @link http://help.infusionsoft.com/api-docs/contactservice#update
+ * @link http://help.infusionsoft.com/api-docs/contactservice#addWithDupCheck
+ * @link http://help.infusionsoft.com/api-docs/emailservice#optIn
+ */
+function infusionsoft_update_contact($contact_data, $contact_id = NULL, $options = array()) {
+  // Remove empty contact data from update array.
+  foreach ($contact_data as $key => $value) {
+    if (empty($value)) {
+      unset($contact_data[$key]);
+    }
+  }
+
+  // Return if there is no contact data.
+  if (empty($contact_data)) {
+    return FALSE;
+  }
+
+  $defaults = array(
+    'opt_in' => TRUE,
+    'opt_reason' => 'Drupal Auto Opt In',
+    'no_email_update' => FALSE,
+    'dup_check_type' => 'Email',
+  );
+
+  $options = array_merge($defaults, $options);
+
+  // If we know the contact id, lets update it.
+  if ($contact_id != NULL) {
+    return infusionsoft_send_request('ContactService.update', (int)$contact_id, $contact_data);
+  }
+  // If we do not know the contact id search for it.
+  if (!empty($contact_data['Username'])) { // By username.
+    $user = user_load(array('name' => $contact_data['Username']));
+    $contact_id = infusionsoft_contactid_by_user($user);
+    if ($contact_id) {
+      return infusionsoft_send_request('ContactService.update', (int)$contact_id, $contact_data);
+    }
+  }
+
+  // There is no drupal mapping to this user in infusionsoft, have we included an email address?
+  if (!empty($contact_data['Email'])) {
+    $contact_id = infusionsoft_contactid_by_email($contact_data['Email']);
+    // If the email exists in infusionsoft update contact.
+    if (!empty($contact_id)) {
+      return infusionsoft_send_request('ContactService.update', (int)$contact_id, $contact_data);
+    }
+  }
+
+  // If we have a new user and we have an email address, or no email update
+  // is selected, create a new user with the supplied info.
+  if (!empty($contact_data['Email']) || $options['no_email_update'] == TRUE) {
+    // There is no email in infusionsoft, we have a new user!
+		$contact_id = infusionsoft_send_request('ContactService.addWithDupCheck', $contact_data, $options['dup_check_type']);
+		// Opt-in to marketing unless we don't want to.
+		if ($contact_data['Email'] && $options['opt_in'] && !empty($contact_id)) {
+			infusionsoft_send_request("APIEmailService.optIn", $contact_data['Email'], $options['opt_reason']);
+		}
+		return $contact_id;
+	}
+
+  // There was not enough data to create a new user.
+  return FALSE;
+}
+
+/**
+ * Send an e-mail to the given contact(s)
+ *
+ * @param array $contact_ids
+ *   an array of (int) infusionsoft contact ids. OR a single $contact_id
+ *
+ * @param string $subject
+ *   The email subject.
+ *
+ * @param string $text_body
+ *   email body for text users
+ *
+ * @param string $html_body
+ *   email body for html users
+ *
+ * @param string $type
+ *   the type of email you are sending
+ *   - options
+ *     - HTML - creates an html email
+ *     - Text - creates a text based email
+ *     - Multipart - creates an email which is both HTML and Text
+ *
+ * @param string $from
+ *   (optional) - the email address this template will be sent from. (defaults to owner)
+ *
+ * @param string $to
+ *   (optional) - the email address this template will send to.
+ *   This is typically the merge field "~Contact.Email~"
+ *
+ * @param string $cc
+ *   The email address(es) this template will carbon copy. Multiples separated by comma
+ *
+ * @param string $bcc
+ *   The email address(es) this template will blind carbon copy. Multiples separated by comma
+ *
+ * @return bool
+ *   TRUE if email has been sent
+ *
+ * @link http://help.infusionsoft.com/api-docs/emailservice#sendEmail
+ */
+function infusionsoft_send_email($contact_ids, $subject, $text_body = '', $html_body = '', $type = 'text', $from = '~Owner.Email~', $to = '~Contact.Email~', $cc = '', $bcc = '') {
+  if (!is_array($contact_ids)) {
+    // The contact ids for who the message is to go.
+    $contact_ids = array($contact_ids);
+  }
+  foreach ($contact_ids as $key => $contact_id) {
+    $contact_ids[$key] = intval($contact_id);
+  }
+
+  return infusionsoft_send_request('APIEmailService.sendEmail', $contact_ids, $from, $to, $cc, $bcc, $type, $subject, $html_body, $text_body);
+}
+
+/**
+ * Update a contact's follow up campaign.
+ *
+ * @param int $contact_id
+ *  An infusionsoft contact id.
+ *
+ * @param int $campaign_id
+ *   An infusionsoft campaign id.
+ *
+ * @param $type
+ *   The type of update
+ *   - options
+ *     - assign - assigns a contact to a follow up campaign
+ *     - remove - removes a contact from a follow up campaign
+ *     - pause - pauses a follow up campaign for a contact
+ *     - resume - resumes a paused campaign
+ *
+ * @return bool
+ *   TRUE if it succeeded or FALSE if it did not.
+ *
+ * @link http://help.infusionsoft.com/api-docs/contactservice#addToCampaign
+ * @link http://help.infusionsoft.com/api-docs/contactservice#removeFromCampaign
+ * @link http://help.infusionsoft.com/api-docs/contactservice#pauseCampaign
+ * @link http://help.infusionsoft.com/api-docs/contactservice#resumeCampaignForContact
+ */
+function infusionsoft_campaign_update($contact_id, $campaign_id, $type = 'assign') {
+  switch ($type) {
+    case 'assign':
+      $result = infusionsoft_send_request('ContactService.addToCampaign', $contact_id, (int)$campaign_id);
+      if (is_numeric($result) && $result == TRUE) {
+        _infusionsoft_devel('infusionsoft', 'Added campaign sequence %campaign_id to contact %contact_id.<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result));
+        return TRUE;
+      }
+      else {
+        _infusionsoft_devel('infusionsoft', 'Add unsuccessfull for campaign sequence %campaign_id to contact %contact_id.<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result), WATCHDOG_ERROR);
+      }
+      return FALSE;
+    case 'remove':
+      $result = infusionsoft_send_request('ContactService.removeFromCampaign', $contact_id, (int)$campaign_id);
+      if (is_numeric($result) && $result == TRUE) {
+        _infusionsoft_devel('infusionsoft', 'Removed campaign sequence %campaign_id to contact %contact_id.<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result));
+        return TRUE;
+      }
+      else {
+        _infusionsoft_devel('infusionsoft', 'Removal unsuccessful for campaign sequence %campaign_id from contact %contact_id.<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result), WATCHDOG_ERROR);
+      }
+      return FALSE;
+    case 'pause':
+      $result = infusionsoft_send_request('ContactService.pauseCampaign', $contact_id, (int)$campaign_id);
+      if (is_numeric($result) && $result == TRUE) {
+        _infusionsoft_devel('infusionsoft', 'Paused campaign sequence %campaign_id to %email<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result));
+        return TRUE;
+      }
+      else {
+        _infusionsoft_devel('infusionsoft', 'Pause unsuccessfull for campaign sequence %campaign_id to contact %contact_id.<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result), WATCHDOG_ERROR);
+      }
+      return FALSE;
+    case 'resume':
+      $result = infusionsoft_send_request('ContactService.resumeCampaignForContact', $contact_id, (int)$campaign_id);
+      if (is_numeric($result) && $result == TRUE) {
+        _infusionsoft_devel('infusionsoft', 'Resumed campaign sequence %campaign_id to %email<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result));
+        return TRUE;
+      }
+      else {
+        _infusionsoft_devel('infusionsoft', 'Resume unsuccessfull for campaign sequence %campaign_id to contact %contact_id.<br />Contact id: %contact_id<br />Result: %result', array('%campaign_id' => $campaign_id, '%contact_id' => $contact_id, '%result' => $result), WATCHDOG_ERROR);
+      }
+      return FALSE;
+  }
+}
+
+/**
+ * Run an action set on a contact.
+ *
+ * @param int $contact_id
+ *   An infusionsoft contact id.
+ *
+ * @param int $actionset_id
+ *   An infusionsoft action set id.
+ *
+ * @return bool
+ *   TRUE if it succeeded or FALSE if it did not.
+ *
+ * @link http://help.infusionsoft.com/api-docs/contactservice#runActionSequence
+ */
+function infusionsoft_run_actionset($contact_id, $actionset_id) {
+  $error = FALSE; // initializing error flag to false.
+  $results = infusionsoft_send_request('ContactService.runActionSequence', (int)$contact_id, (int)$actionset_id);
+  // Actionsets should return a nested array with details about each action.
+  if (is_array($results)) {
+    foreach ($results as $result) {
+      if ($result['IsError'] == 1) {
+        _infusionsoft_devel('infusionsoft', 'Actionset %actionset_id subtask error for contact %contact_id.<br />Action: %action<br />Error: %error', array('%actionset_id' => $actionset_id, '%contact_id' => $contact_id, '%action' => $result['Action'], '%error' => $result['Message']), WATCHDOG_ERROR);
+        $error = TRUE;
+      }
+    }
+  }
+  else { // No nested array lets send an error message and set error flag.
+    _infusionsoft_devel('infusionsoft', 'Actionset %actionset_id error for contact %contact_id.<br />Result: %result', array('%actionset_id' => $actionset_id, '%contact_id' => $contact_id, '%result' => $results), WATCHDOG_ERROR);
+    $error = TRUE;
+  }
+  if ($error == FALSE) {
+    _infusionsoft_devel('infusionsoft', 'Actionset %actionset_id for contact %contact_id completed successfully.<br /> !result', array('%actionset_id' => $actionset_id, '%contact_id' => $contact_id, '!result' => print_r($results, TRUE)));
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Look up a contact group name from a group id.
+ *
+ * @param int $contact_group_id
+ *   id of the contact group to look up the name of
+ *
+ * @return array
+ *   array of fields
+ */
+function infusionsoft_get_contact_group_name($contact_group_id) {
+  $return_fields = array('Id', 'GroupName', 'GroupCategoryId', 'GroupDescription');
+  $query = array('GroupCategoryId' => $contact_group_id);
+  return infusionsoft_query_all('ContactGroup', $query, $return_fields);
+}
+
+/**
+ * Primary callback function to send an API request to infusionsoft.
+ *
+ * Call an infusionsoft request, followed by the proper parameters.
+ *
+ * @param string $request_type
+ *   The API function to call.
+ *
+ * @return bool|null|array|int|string
+ *   FALSE if there is no api key
+ *   OR Nothing if there is a problem with the query
+ *   OR the return values for the given service and method sent via xml-rpc request.
+ *
+ * @link http://help.infusionsoft.com/developers/services-methods
+ */
+function infusionsoft_send_request($request_type = 'ContactService.load') {
+  $values = func_get_args();
+  $app_name = variable_get('infusionsoft_appname', '');
+  $server = "https://$app_name.infusionsoft.com/api/xmlrpc";
+  $api_key = variable_get('infusionsoft_apikey', '');
+
+  // Return early if no API key has been set.
+  if (empty($api_key)) {
+    return;
+  }
+
+  // Remove the $request_type variable from the values array.
+  array_shift($values);
+
+  // Prepend the server, request_type, and api key to the values we want to pass along.
+  array_unshift($values, $server, $request_type, $api_key);
+
+  $return = call_user_func_array('xmlrpc', $values);
+
+  // XML-RPC error handler
+  if ($error = xmlrpc_error()) {
+    if ($error->code <= 0) {
+      // Error code of 0 does not necessarily mean that a connection could not be reached.
+      // Could also mean a misspelled service or method call.
+      if (!_infusionsoft_test_connection()) {
+        $error->message .= t('TCP/IP Socket could not be opened. Your connection to the infusionsoft server may be down.');
+      }
+    }
+    $message = sprintf(t('XML-RPC error: %s (%d).'), $error->message, $error->code);
+    _infusionsoft_devel('infusionsoft', $message, array(), WATCHDOG_ERROR);
+  }
+
+  return $return;
+}
+
+/**
+ * Runs an infusionsoft findByField query as many times as needed to get all results.
+ *
+ * This is needed because Infusionsoft caps findByfield queries at 1000 responses.
+ * This operation is particularly useful when doing a lookup on a foreign key, for
+ * example looking up all Invoices related to a given contact.
+ *
+ * @param string $table
+ *   The infusionsoft table to query.
+ *
+ * @param $field_name
+ *   the data to look for
+ *
+ * @param $field_value
+ *   the data to look for
+ *
+ * @param $return_fields
+ *   the fields to return from the query
+ *
+ * @return array
+ *   An array of arrays in the format:
+ *   array(
+ *     array(
+ *       'ReturnField1' => something,
+ *       'ReturnField2' => something else,
+ *       ...
+ *     )
+ *     ...
+ *   );
+ *
+ * NOTE: Use this very sparingly, if you have 1000s of records this can have a
+ * performance impact. If you use this function frequently you will want to
+ * cache it!
+ *
+ * @link http://help.infusionsoft.com/api-docs/dataservice#findByField
+ */
+function infusionsoft_findbyfield_all($table, $field_name, $field_value, $return_fields) {
+  $page = 0;
+  $count = 0;
+  $return = array();
+
+  do {
+    $records = infusionsoft_send_request('DataService.findByField', $table, 1000, $page, $field_name, $field_value, $return_fields);
+    // Successful response, lets add these records to the return array.
+    if (is_array($records)) {
+      $return = array_merge($return, $records);
+      $count = count($records);
+    }
+    else {
+      // Prevent an infinite loop.
+      $count = 0;
+    }
+
+    // If there is nothing to return, lets return the error message or blank query.
+    if (empty($return)) return $records;
+
+    $page ++; // Lets go to the next page of data.
+  } while ($count == 1000);
+  return $return;
+}
+
+/**
+ * Runs an infusionsoft query as many times as needed to get all results.
+ *
+ * This is needed because Infusionsoft caps queries at 1000 responses.
+ *
+ * @param string $table
+ *   The infusionsoft table to query.
+ *
+ * @param array $query_data
+ *   The data to look for.
+ *
+ * @param array $selected_fields
+ *   The fields to return from the query.
+ *
+ * @return array
+ *    An array of arrays in the format:
+ *      array(
+ *				array(
+ *					'ReturnField1' => something,
+ *					'ReturnField2' => something else,
+ *					...
+ *				)
+ *				...
+ *      );
+ *
+ * NOTE: Use this very sparingly, if you have 1000s of records this can have a performance impact.
+ *   If you use this function frequently you will want to cache it!
+ *
+ * @link http://help.infusionsoft.com/api-docs/dataservice#query
+ */
+function infusionsoft_query_all($table, $query_data, $selected_fields) {
+  $page = 0;
+  $count = 0;
+  $return = array();
+
+  do {
+    $records = infusionsoft_send_request('DataService.query', $table, 1000, $page, $query_data, $selected_fields);
+    // Successful response, lets add these records to the return array.
+    if (is_array($records)) {
+      $return = array_merge($return, $records);
+      $count = count($records);
+    }
+    else {
+      // Prevent an infinite loop.
+      $count = 0;
+    }
+
+    // If there is nothing to return, lets return the error message or blank query
+    if (empty($return)) {
+      return $records;
+    }
+
+    $page ++; // lets go to the next page of data
+  } while ($count == 1000);
+  return $return;
+}
+
+/**
+ * END of API FUNCTIONS.
+ */
+
+/**
+ * Implements hook_init().
+ */
+function infusionsoft_init() {
+  module_load_include('inc', 'infusionsoft', 'includes/helpers');
+  module_load_include('inc', 'infusionsoft', 'includes/infusionsoft.actions');
+  // Only load conditional actions if ubercart is installed.
+  if (module_exists('ca')) {
+    module_load_include('inc', 'infusionsoft', 'includes/infusionsoft.ca');
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function infusionsoft_menu() {
+  $items = array();
+  $items['admin/settings/infusionsoft'] = array(
+    'title' => 'Infusionsoft',
+    'description' => 'Adjust infusionsoft settings.',
+    'page callback' => 'infusionsoft_admin_settings_page',
+    'access arguments' => array('administer infusionsoft'),
+    'file' => 'includes/infusionsoft.admin.inc',
+  );
+  $items['admin/settings/infusionsoft/settings'] = array(
+    'title' => 'Settings',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['admin/settings/infusionsoft/custom-fields'] = array(
+    'title' => 'Custom contact field list',
+    'description' => 'A list of Infusionsoft Custom Contact fields.',
+    'page callback' => 'infusionsoft_admin_custom_contact_fields',
+    'access arguments' => array('view infusionsoft custom contact fields'),
+    'file' => 'includes/infusionsoft.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_perm().
+ *
+ *  Providing permissions for infusionsoft module
+ */
+function infusionsoft_perm() {
+  return array('administer infusionsoft', 'view infusionsoft custom contact fields');
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function infusionsoft_preprocess_page(&$vars) {
+  // Add tracking url to page if we turn that on in the admin UI.
+  $tracking_url = str_replace(array('http://', 'https://'), '', variable_get('infusionsoft_tracking_url', ''));
+  if (variable_get('infusionsoft_tracking', TRUE) == TRUE && !empty($tracking_url)) {
+    $output = "<!-- Infusionsoft -->\n";
+    $output .= "<script type=\"text/javascript\" src=\"//{$tracking_url}\"></script>\n";
+    if (!isset($vars['closure'])) {
+      $vars['closure'] = '';
+    }
+
+    // Load the infusionsoft via HTTP by default.
+    // Build the output.
+    $vars['closure'] .= $output;
+  }
+}
+
+/**
+ * Implements hook_infusionsoft_contact_map_info().
+ */
+function infusionsoft_infusionsoft_contact_map_info() {
+  $maps['default'] = array(
+    'title' => t('Default'),
+    'description' => t('Maps the email and user name.'),
+    'callback' => '_infusionsoft_map_default',
+  );
+  return $maps;
+}
